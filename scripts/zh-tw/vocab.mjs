@@ -117,6 +117,11 @@ export const PROTECT = [
   // by the localization overrides (戶政事務所、律師事務所) must survive;
   // genuine 交易所 (證券交易所) does not contain 事務所 and is untouched.
   ['事務所', '\u0001OFFICE\u0001'],
+  // 領事事務局 (外交部領事事務局, Bureau of Consular Affairs): the
+  // name has 事務+局, not 事務所, so the OFFICE protect misses it and
+  // tw2 renders it as 領事交易局. The contributor's checker (PR #10) flags
+  // 交易局 as a wrong agency name; protect the full name instead.
+  ['領事事務局', '\u0001CONSULAR\u0001'],
   // 占有人 is the Civil Code §190 statutory term (動物占有人); tw2 would
   // render it 佔有人. Only the compound is protected, generic 佔有 verbs
   // elsewhere still convert normally.
@@ -154,6 +159,7 @@ export const restore = (t) => {
   t = t.split('\u0001NETCAFE\u0001').join('互聯網上網服務');
   t = t.split('\u0001EBIKE\u0001').join('電動自行車');
   t = t.split('\u0001OFFICE\u0001').join('事務所');
+  t = t.split('\u0001CONSULAR\u0001').join('領事事務局');
   t = t.split('\u0001POSSESSOR\u0001').join('占有人');
   return t;
 };
@@ -213,6 +219,18 @@ export const GLOBAL_VOCAB = [
   ['比如', '譬如'], // for example (also closes the 邊界詞 question)
   ['註冊機', '序號產生器'], // keygen
   ['破解補丁', '破解修補程式'], // crack patch; bare 補丁 stays (metaphor use in ch.10)
+  ['頭盔', '安全帽'], // helmet (Will, 2026-11-07: Taiwan usage for riding/sports helmets)
+  ['超聲波', '超音波'], // ultrasound wave form first, so the bare pair below cannot yield 超音波波
+  ['超聲', '超音波'], // ultrasound (Will, 2026-11-07: Taiwan medical usage)
+  ['雙硫侖', '雙硫崙'], // disulfiram: 崙 is the Taiwan character (Will, 2026-11-08)
+  ['乙肝', 'B 型肝炎'], // hepatitis B: full sweep incl. titles/anchors (Will, 2026-11-08)
+  ['丙肝', 'C 型肝炎'], // hepatitis C: full sweep (Will, 2026-11-08)
+  [' B 超', '超音波'], // B-scan ultrasound exam; leading space consumed (same family as 超聲 ruling, 2026-11-08)
+  ['B超', '超音波'],
+  // 宮頸→子宮頸 lives in REGEX_VOCAB: the target contains the source,
+  // so a plain pair would re-apply and yield 子子宮頸.
+  ['慢病', '慢性病'], // chronic disease shorthand (Will, 2026-11-08: batch A)
+  ['息肉', '瘜肉'], // polyp, Taiwan medical glyph (Will, 2026-11-08: batch A)
   ['打印', '列印'],
   ['列印遺囑', '打印遺囑'], // PRC Civil Code category name, proper noun
   ['身份', '身分'], // 身分證 / 身分驗證 are the Taiwan standard forms
@@ -232,6 +250,7 @@ export const GLOBAL_VOCAB = [
   ['程序碼', '程式碼'],
   ['電腦程序', '電腦程式'],
   ['寫程序', '寫程式'],
+  ['改程序', '改程式'],
   ['程序語言', '程式語言'],
   ['應用程序', '應用程式'],
   ['小程式', '小程序'], // WeChat Mini Program proper name (in case of drift)
@@ -367,6 +386,9 @@ export const GLOBAL_VOCAB = [
   // 支持 vs 支援: tw2 turns every 支持 into 支援. Evidence and feature
   // support read fine as 支援 in Taiwan usage, so only the court /
   // judgment phrases are restored to 支持.
+  // 心理支持 only in the SKILL's 1925 sentence; the books quote an
+  // official service name with 心理支援服務 and must keep 支援 there.
+  ['接的是心理支援，不會派出救護車', '接的是心理支持，不會派出救護車'],
   ['法律支援你', '法律支持你'], // the book's own house phrase
   ['法律只支援', '法律只支持'],
   ['法院不支援', '法院不支持'],
@@ -548,7 +570,9 @@ export const GLOBAL_VOCAB = [
   // provenance citation above is protected. Branch paths follow the
   // slug: the site's blob/tree links and the skill's raw fetches name
   // files that only exist, under their converted names, on zh-tw.
-  ['eternity4719/HowToLiveBetter', 'doggy8088/HowToLiveBetter'],
+  // The repo slug rewrite lives in REGEX_VOCAB: the license section's
+  // attribution line is a provenance citation and keeps the upstream
+  // slug (Will, 2026-11-08), like the protected citation above.
   ['eternity4719.github.io', 'doggy8088.github.io'],
   ['eternity4719\\.github\\.io', 'doggy8088\\.github\\.io'], // check-links SKIP regex
   ['HowToLiveBetter/blob/main/', 'HowToLiveBetter/blob/zh-tw/'],
@@ -594,6 +618,17 @@ export const GLOBAL_VOCAB = [
  * not followed by 碼 is restored to 編碼.
  */
 export const REGEX_VOCAB = [
+  // After the 乙肝/丙肝 sweep: a Latin letter directly glued to a
+  // preceding Chinese character takes a space, matching the book's
+  // dominant spacing (查 B 型肝炎, not 查B 型肝炎).
+  [/(?<=[一-鿿])([BC] 型肝炎)/g, ' $1'],
+  // Repo slug: functional pointers name the fork, but the attribution
+  // line in the license section ("附上倉庫連結 <url>") is a provenance
+  // citation and keeps the upstream slug (Will, 2026-11-08).
+  [/(?<!附上倉庫連結 https:\/\/github\.com\/|上游原文在 \[|上游原文在 \[eternity4719\/HowToLiveBetter\]\(https:\/\/github\.com\/)eternity4719\/HowToLiveBetter/g, 'doggy8088/HowToLiveBetter'],
+  // Cervix (Will, 2026-11-08: domain term check, batch A). Negative
+  // lookbehind keeps the already-correct 子宮頸 a fixed point.
+  [/(?<!子)宮頸/g, '子宮頸'],
   [/寫程式(?!碼)/g, '編碼'],
   // Weeks as a duration after a numeral: 幾周 is covered above, digits
   // and 兩 need the regex. The lookahead keeps 周歲 (age, handled by the
